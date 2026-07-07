@@ -1,0 +1,169 @@
+# TSA — Tiny Systolic Accelerator
+
+**TSA** is an experimental INT8 systolic AI accelerator IP-core written in Verilog/SystemVerilog.
+
+The project demonstrates a complete learning path from a single MAC unit to a synthesis-valid AXI-Lite compatible matrix accelerator.
+
+## Current Status
+
+TSA currently includes two accelerator generations:
+
+| Core | Matrix Tile | PE Count | Input | Accumulator | Interface | Status |
+|---|---:|---:|---|---|---|---|
+| TSA-1 | 4x4 | 16 PE | signed INT8 | signed INT32 | MMIO + AXI-Lite | PASS |
+| TSA-2 | 8x8 | 64 PE | signed INT8 | signed INT32 | AXI-Lite | PASS |
+
+## Architecture
+
+TSA uses an **output-stationary systolic array**.
+
+Dataflow:
+
+- Matrix A flows horizontally.
+- Matrix B flows vertically.
+- Partial sums stay inside each PE accumulator.
+- Each PE performs INT8 × INT8 → INT32 accumulation.
+
+PE operation:
+
+    acc = acc + (a_in * b_in)
+
+## TSA-1
+
+TSA-1 is a 4x4 INT8 systolic accelerator.
+
+Features:
+
+- 16 processing elements
+- signed INT8 inputs
+- signed INT32 accumulators
+- output-stationary dataflow
+- simple local-memory/MMIO top
+- AXI-Lite compatible top
+- stable done_latched / valid_latched / irq status
+- W1C clear_done behavior
+- 50 random verification tests
+- visual matrix report
+- timeline report
+
+## TSA-2
+
+TSA-2 is an 8x8 INT8 systolic accelerator.
+
+Features:
+
+- 64 processing elements
+- signed INT8 inputs
+- signed INT32 accumulators
+- output-stationary dataflow
+- AXI-Lite compatible host interface
+- local A/B input buffers
+- C output buffer
+- stable start / busy / done / valid / irq control path
+- W1C clear_done behavior
+- 30 random verification tests
+- Xilinx 7-series synthesis mapping through Yosys
+
+## Host Interface
+
+The AXI-Lite wrapper exposes a register-style control interface:
+
+| Register | Description |
+|---|---|
+| CTRL | start / clear_done |
+| STATUS | busy / done_latched / valid_latched / irq |
+| A buffer | input matrix A |
+| B buffer | input matrix B |
+| C buffer | output matrix C |
+
+The host flow:
+
+1. Write matrix A.
+2. Write matrix B.
+3. Write CTRL.start.
+4. Poll STATUS.done_latched.
+5. Read matrix C.
+6. Compare against reference output.
+7. Clear done/irq using W1C clear_done.
+
+## Verification
+
+TSA is verified using Verilog/SystemVerilog testbenches and Python reference checks.
+
+Current verification status:
+
+| Test | Result |
+|---|---|
+| TSA-1 4x4 core test | PASS |
+| TSA-1 local memory/MMIO test | PASS |
+| TSA-1 AXI-Lite test | PASS |
+| TSA-1 random verification | 50/50 PASS |
+| TSA-2 8x8 core test | PASS |
+| TSA-2 AXI-Lite test | PASS |
+| TSA-2 random verification | 30/30 PASS |
+| Full card-style accelerator test | PASS |
+
+Run full test:
+
+    make cardtest
+
+Run TSA-2 AXI-Lite test:
+
+    make axi8x8
+
+Run Xilinx synthesis mapping:
+
+    make synth-xilinx
+
+## Synthesis
+
+TSA-2 AXI-Lite 8x8 has been mapped using Yosys `synth_xilinx` for Xilinx 7-series.
+
+Current synthesis mapping summary:
+
+| Resource | Count |
+|---|---:|
+| DSP48E1 | 64 |
+| Total cells | 15544 |
+| LUT1 | 7 |
+| LUT2 | 84 |
+| LUT3 | 174 |
+| LUT4 | 3100 |
+| LUT5 | 142 |
+| LUT6 | 1381 |
+| Warnings | 7 non-critical memory-to-register warnings |
+
+Important synthesis notes:
+
+- Each PE maps to one DSP48E1.
+- No fatal synthesis errors were reported.
+- No actual latch inference was observed.
+- Current report is Yosys/Xilinx mapping, not full Vivado place-and-route.
+- Fmax, timing closure, and power require a real FPGA flow.
+
+## Generated Reports
+
+Generated files include:
+
+- `reports/tsa_4x4_report.png`
+- `reports/tsa_4x4_timeline.png`
+- `reports/tsa_8x8_report.png`
+- `reports/tsa_fpga_mem_timeline.csv`
+- `reports/tsa_axi_lite_timeline.csv`
+- `reports/synth/tsa2_axi8_xilinx_xc7.log`
+
+## Project Direction
+
+TSA is not a GPU replacement.
+
+It is a compact FPGA/ASIC learning project and portfolio-grade AI accelerator IP-core prototype.
+
+Next steps:
+
+1. Vivado synthesis for a concrete Zynq target.
+2. FPGA utilization report.
+3. Timing/Fmax report.
+4. PYNQ/Zynq Python driver.
+5. Real FPGA board demo.
+6. TSA-3 tiled GEMM engine.
+7. INT8 MNIST inference demo.
