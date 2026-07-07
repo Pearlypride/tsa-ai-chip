@@ -1,0 +1,21 @@
+read_verilog -sv rtl/tsa_pe_i8.v
+read_verilog -sv rtl/tsa_systolic_8x8_i8.sv
+read_verilog -sv rtl/tsa_systolic_8x8_core_i8.sv
+
+hierarchy -check -top tsa_systolic_8x8_core_i8
+
+proc
+opt
+fsm
+opt
+memory
+opt
+
+check
+
+synth -top tsa_systolic_8x8_core_i8
+
+stat
+
+write_json reports/synth/tsa2_8x8_core_generic.json
+write_verilog reports/synth/tsa2_8x8_core_netlist.v
